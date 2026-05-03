@@ -1,0 +1,20 @@
+name: detect-drift
+description: Detect AGENTS.md drift after source code changes
+model: claude-sonnet-4-6
+context:
+  - agents_md
+  - diff_since_agents_update
+  - changed_files_list
+source_globs:
+  - "*.go"
+  - "*.py"
+  - "*.rs"
+  - "*.tf"
+  - "*.yml"
+  - "*.yaml"
+  - "*.toml"
+max_diff_tokens: 3000
+output:
+  type: pr
+  branch_prefix: context-keeper/drift-
+  skip_marker: NO_CHANGES_NEEDED

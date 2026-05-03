@@ -1,0 +1,21 @@
+# Repos monitored by context-keeper.
+# Add repos here to include them in scheduled runs.
+# model_override is optional — defaults to the task's model.
+
+repos:
+  - repo: FelipeFuhr/ffreis-website-inventory
+    branch: ffreis/00-setup
+    tasks: [detect-drift]
+
+  - repo: FelipeFuhr/ffreis-siteops
+    branch: ffreis/00-setup
+    tasks: [detect-drift]
+
+  - repo: FelipeFuhr/ffreis-website-deployer
+    branch: ffreis/02-setup
+    tasks: [detect-drift]
+
+  - repo: FelipeFuhr/ffreis-website-compiler
+    branch: ffreis/01-ci-and-improvements
+    tasks: [detect-drift]
+    model_override: claude-haiku-4-5   # simpler repo, cheaper model

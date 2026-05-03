@@ -1,0 +1,64 @@
+name: Run standardizer
+
+on:
+  schedule:
+    - cron: '0 9 1 * *'   # 1st of each month at 09:00 UTC
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'task name to run (empty = all)'
+        required: false
+        default: ''
+      repo:
+        description: 'repo slug to filter (empty = all)'
+        required: false
+        default: ''
+      model:
+        description: 'model override'
+        required: false
+        default: 'claude-sonnet-4-6'
+      dry_run:
+        description: 'dry run (true = print prompts only, no API calls)'
+        required: false
+        default: 'false'
+
+concurrency:
+  group: standardizer-run
+  cancel-in-progress: false
+
+jobs:
+  run:
+    name: Run tasks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build
+        run: make build
+
+      - name: Run standardizer
+        run: |
+          ARGS="--output-dir output/"
+          [ -n "${{ inputs.task }}" ]      && ARGS="$ARGS --task ${{ inputs.task }}"
+          [ -n "${{ inputs.repo }}" ]      && ARGS="$ARGS --repo ${{ inputs.repo }}"
+          [ -n "${{ inputs.model }}" ]     && ARGS="$ARGS --model ${{ inputs.model }}"
+          [ "${{ inputs.dry_run }}" = "true" ] && ARGS="$ARGS --dry-run"
+          ./bin/standardizer run $ARGS
+        env:
+          LLM_API_KEY:  ${{ secrets.LLM_API_KEY }}
+          LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
+          GH_TOKEN:     ${{ secrets.STANDARDIZER_GH_TOKEN }}
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: run-summary-${{ github.run_number }}
+          path: output/summary.json
