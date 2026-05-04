@@ -1,0 +1,62 @@
+name: DevOps / Security
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  gitleaks:
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-gitleaks.yml@a02d736d25fa99fca8b4b623af9467d7afc472a4 # v1.0.3
+    with:
+      working-directory: "."
+      scan-history: true
+      upload-sarif: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+
+  trivy-fs:
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-scan-trivy-fs.yml@a02d736d25fa99fca8b4b623af9467d7afc472a4 # v1.0.3
+    with:
+      scan-ref: "."
+      upload-sarif: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+      fail-on-vuln: ${{ github.event_name != 'pull_request' }}
+
+  grype-fs:
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-scan-grype-fs.yml@a02d736d25fa99fca8b4b623af9467d7afc472a4 # v1.0.3
+    with:
+      path: "."
+      fail-on-vuln: ${{ github.event_name != 'pull_request' }}
+      upload-sarif: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+
+  osv:
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-osv-scanner.yml@a02d736d25fa99fca8b4b623af9467d7afc472a4 # v1.0.3
+    with:
+      working-directory: "."
+      upload-sarif: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
