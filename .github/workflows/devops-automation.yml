@@ -39,7 +39,7 @@ jobs:
       only: "both"
 
   release-please:
-    if: vars.RELEASE_PLEASE_ENABLED == 'true' && github.event_name == 'push'
+    if: vars.RELEASE_PLEASE_ENABLED != 'false' && github.event_name == 'push'
     permissions:
       contents: write
       pull-requests: write
