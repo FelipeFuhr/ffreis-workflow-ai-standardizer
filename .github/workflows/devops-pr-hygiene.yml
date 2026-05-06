@@ -1,0 +1,27 @@
+name: DevOps / PR Hygiene
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+concurrency:
+  group: devops-pr-hygiene-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  semantic-pr:
+    permissions:
+      contents: read
+    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-semantic-pr.yml@a02d736d25fa99fca8b4b623af9467d7afc472a4 # v1.0.3
+    with:
+      require-scope: false
+
+  actionlint:
+    permissions:
+      contents: read
+    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-actionlint.yml@a02d736d25fa99fca8b4b623af9467d7afc472a4 # v1.0.3
+    with:
+      working-directory: "."
