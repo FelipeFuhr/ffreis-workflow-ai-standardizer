@@ -19,6 +19,7 @@ env:
 
 jobs:
   gitleaks:
+    timeout-minutes: 30
     permissions:
       contents: read
       actions: read
@@ -30,6 +31,7 @@ jobs:
       upload-sarif: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
 
   trivy-fs:
+    timeout-minutes: 30
     permissions:
       contents: read
       actions: read
@@ -41,6 +43,7 @@ jobs:
       fail-on-vuln: ${{ github.event_name != 'pull_request' }}
 
   grype-fs:
+    timeout-minutes: 30
     permissions:
       contents: read
       actions: read
@@ -52,6 +55,7 @@ jobs:
       upload-sarif: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
 
   osv:
+    timeout-minutes: 30
     permissions:
       contents: read
       actions: read
