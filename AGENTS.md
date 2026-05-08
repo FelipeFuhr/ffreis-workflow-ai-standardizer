@@ -79,6 +79,14 @@ LLM_API_KEY=sk-... GH_TOKEN=ghp_... ./bin/standardizer run
 3. Add task name to `config/repos.yaml` for repos you want it to run on.
 4. Run `./bin/standardizer tasks validate` to verify.
 
+## Public repo — private-repo hygiene
+
+This is a **public** GitHub repository. When writing commit messages, PR titles,
+PR descriptions, or any other user-visible text, **never name private repos** —
+website content, inventory, infra, Lambda, or data repos that are not publicly
+listed. Use generic terms instead: "the fleet inventory", "a private consumer",
+"internal infra", "private data repo", etc.
+
 ## Keeping this file current
 
 - **If you discover a fact not reflected here:** add it before finishing your task.
