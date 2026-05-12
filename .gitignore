@@ -3,3 +3,6 @@ output/
 *.log
 .env
 *.local.yaml
+
+scripts/hooks/
+scripts/bootstrap_lefthook.sh
