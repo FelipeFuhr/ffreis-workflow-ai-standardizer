@@ -25,10 +25,11 @@ on:
 
 concurrency:
   group: standardizer-run
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   run:
+    timeout-minutes: 15
     name: Run tasks
     runs-on: ubuntu-latest
     permissions:

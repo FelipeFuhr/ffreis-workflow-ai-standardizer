@@ -36,6 +36,7 @@ jobs:
       working-directory: .
 
   test:
+    if: ${{ !github.event.pull_request.draft }}
     uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-test.yml@706807616c7887b62bf1f5c72050db843add3828 # main
     with:
       working-directory: .
@@ -43,6 +44,7 @@ jobs:
   # Validates all task YAML configs parse and have required fields.
   # This catches malformed tasks before they reach production.
   tasks-validate:
+    timeout-minutes: 15
     name: Validate task configs
     runs-on: ubuntu-latest
     steps:
