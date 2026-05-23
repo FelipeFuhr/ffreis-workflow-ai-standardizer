@@ -3,12 +3,45 @@ package context
 import (
 	"fmt"
 	"os/exec"
+	"regexp"
 	"strings"
 )
 
+// repoURLPattern restricts repoURL inputs to HTTPS GitHub URLs. Anything
+// else — file://, ssh://, ext::, a leading dash — is rejected before exec.
+// Even though Clone is invoked from a config file (not a user prompt), an
+// unvalidated argv element starting with `-` would be interpreted by git as
+// a flag, potentially escalating into things like --upload-pack=<command>.
+// This is defense in depth.
+var repoURLPattern = regexp.MustCompile(`^https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:\.git)?$`)
+
+// ValidateRepoURL returns nil if u is a safe-looking GitHub HTTPS URL and an
+// error otherwise. Exposed as a package symbol so callers (and fuzz tests)
+// can validate without invoking the full Clone.
+func ValidateRepoURL(u string) error {
+	if u == "" {
+		return fmt.Errorf("repo URL is empty")
+	}
+	if strings.ContainsAny(u, " \t\n\r") {
+		return fmt.Errorf("repo URL contains whitespace: %q", u)
+	}
+	if !repoURLPattern.MatchString(u) {
+		return fmt.Errorf("repo URL %q is not a recognised https://github.com/<org>/<repo> URL", u)
+	}
+	return nil
+}
+
 // Clone performs a shallow clone of the given HTTPS URL into destDir.
+//
+// repoURL is validated against an allowlist before being passed to git. A
+// `--` separator is also emitted before the URL so git treats a value
+// starting with `-` as a positional argument rather than a flag, even if the
+// allowlist is later relaxed.
 func Clone(repoURL, destDir string) error {
-	cmd := exec.Command("git", "clone", "--depth=200", "--no-single-branch", repoURL, destDir)
+	if err := ValidateRepoURL(repoURL); err != nil {
+		return fmt.Errorf("git clone: %w", err)
+	}
+	cmd := exec.Command("git", "clone", "--depth=200", "--no-single-branch", "--", repoURL, destDir)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("git clone %s: %w\n%s", repoURL, err, out)
