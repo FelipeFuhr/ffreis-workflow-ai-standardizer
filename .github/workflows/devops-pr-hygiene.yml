@@ -8,9 +8,6 @@ concurrency:
   group: devops-pr-hygiene-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
-
 jobs:
   semantic-pr:
     permissions:
