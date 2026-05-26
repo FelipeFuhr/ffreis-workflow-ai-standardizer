@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.2](https://github.com/FelipeFuhr/ffreis-workflow-ai-standardizer/compare/v1.0.1...v1.0.2) (2026-05-26)
+
+
+### Bug Fixes
+
+* **ci:** bump PLATFORM_STANDARDS_SHA to a SHA that has bootstrap_lefthook.sh ([#16](https://github.com/FelipeFuhr/ffreis-workflow-ai-standardizer/issues/16)) ([ec94151](https://github.com/FelipeFuhr/ffreis-workflow-ai-standardizer/commit/ec9415181162029ffce27a4292d4c0976f2ca6cd))
+
 ## [1.0.1](https://github.com/FelipeFuhr/ffreis-workflow-ai-standardizer/compare/v1.0.0...v1.0.1) (2026-05-23)
 
 
