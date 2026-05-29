@@ -50,7 +50,7 @@ jobs:
         env:
           LLM_API_KEY:    ${{ secrets.LLM_API_KEY }}
           LLM_BASE_URL:   ${{ vars.LLM_BASE_URL }}
-          GH_TOKEN:       ${{ secrets.STANDARDIZER_GH_TOKEN }}
+          GH_TOKEN:       ${{ secrets.FLEET_WRITE_TOKEN }}
           INPUT_TASK:     ${{ inputs.task }}
           INPUT_REPO:     ${{ inputs.repo }}
           INPUT_MODEL:    ${{ inputs.model }}
