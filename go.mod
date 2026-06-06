@@ -1,6 +1,6 @@
 module github.com/felipefuhr/ffreis-workflow-ai-standardizer
 
-go 1.23
+go 1.25.8
 
 require (
 	github.com/google/go-github/v62 v62.0.0
