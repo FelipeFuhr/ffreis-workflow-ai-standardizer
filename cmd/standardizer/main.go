@@ -56,63 +56,18 @@ func runCmd() *cobra.Command {
   Local mode: operates on an already-cloned directory (for use inside GitHub Actions).
     standardizer run --local-dir <path> --repo-slug owner/name [--task <name>]`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
-
-			apiKey := firstNonEmpty(
-				os.Getenv("LLM_API_KEY"),
-				os.Getenv("ANTHROPIC_API_KEY"),
-				os.Getenv("OPENAI_API_KEY"),
-			)
-			if apiKey == "" && !dryRun {
-				return fmt.Errorf("no LLM API key: set LLM_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY")
-			}
-			if baseURL == "" {
-				baseURL = os.Getenv("LLM_BASE_URL")
-			}
-			if model == "" {
-				model = firstNonEmpty(os.Getenv("LLM_MODEL"), "claude-sonnet-4-6")
-			}
-
-			opts := runner.Options{
-				ReposConfig: reposConfig,
-				TasksDir:    tasksDir,
-				LLMConfig: llm.Config{
-					BaseURL: baseURL, APIKey: apiKey, Model: model,
-					MaxRetries: 3, Timeout: 120 * time.Second,
-				},
-				GHToken:    os.Getenv("GH_TOKEN"),
-				OutputDir:  outputDir,
-				DryRun:     dryRun,
-				TaskFilter: taskFilter,
-				RepoFilter: repoFilter,
-				LocalDir:   localDir,
-				RepoSlug:   repoSlug,
-				Logger:     logger,
-			}
-
-			start := time.Now()
-			results, err := runner.Run(context.Background(), opts)
-			if err != nil {
-				return err
-			}
-
-			sum := output.RunSummary{StartedAt: start, FinishedAt: time.Now()}
-			for _, r := range results {
-				sum.Results = append(sum.Results, output.RepoResult{
-					Repo: r.Repo, Task: r.Task, Status: r.Status, Detail: r.Detail,
-				})
-			}
-			if outputDir != "" {
-				if err := output.WriteSummary(outputDir, sum); err != nil {
-					logger.Warn("write summary failed", "error", err)
-				}
-			}
-
-			fmt.Println("\n── Run Summary ──────────────────────────────────")
-			for _, r := range results {
-				fmt.Printf("  %-40s  %-20s  %-12s  %s\n", r.Repo, r.Task, r.Status, r.Detail)
-			}
-			return nil
+			return runCmdRunE(cmd, runCmdFlags{
+				reposConfig: reposConfig,
+				tasksDir:    tasksDir,
+				outputDir:   outputDir,
+				taskFilter:  taskFilter,
+				repoFilter:  repoFilter,
+				model:       model,
+				baseURL:     baseURL,
+				dryRun:      dryRun,
+				localDir:    localDir,
+				repoSlug:    repoSlug,
+			})
 		},
 	}
 
@@ -130,6 +85,85 @@ func runCmd() *cobra.Command {
 	return cmd
 }
 
+// runCmdFlags holds all flags for the run subcommand.
+type runCmdFlags struct {
+	reposConfig string
+	tasksDir    string
+	outputDir   string
+	taskFilter  string
+	repoFilter  string
+	model       string
+	baseURL     string
+	dryRun      bool
+	localDir    string
+	repoSlug    string
+}
+
+func resolveModel(flagModel string) string {
+	return firstNonEmpty(flagModel, os.Getenv("LLM_MODEL"), "claude-sonnet-4-6")
+}
+
+func resolveBaseURL(flagBaseURL string) string {
+	if flagBaseURL != "" {
+		return flagBaseURL
+	}
+	return os.Getenv("LLM_BASE_URL")
+}
+
+func runCmdRunE(_ *cobra.Command, flags runCmdFlags) error {
+	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
+
+	apiKey := firstNonEmpty(
+		os.Getenv("LLM_API_KEY"),
+		os.Getenv("ANTHROPIC_API_KEY"),
+		os.Getenv("OPENAI_API_KEY"),
+	)
+	if apiKey == "" && !flags.dryRun {
+		return fmt.Errorf("no LLM API key: set LLM_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY")
+	}
+
+	opts := runner.Options{
+		ReposConfig: flags.reposConfig,
+		TasksDir:    flags.tasksDir,
+		LLMConfig: llm.Config{
+			BaseURL: resolveBaseURL(flags.baseURL), APIKey: apiKey, Model: resolveModel(flags.model),
+			MaxRetries: 3, Timeout: 120 * time.Second,
+		},
+		GHToken:    os.Getenv("GH_TOKEN"),
+		OutputDir:  flags.outputDir,
+		DryRun:     flags.dryRun,
+		TaskFilter: flags.taskFilter,
+		RepoFilter: flags.repoFilter,
+		LocalDir:   flags.localDir,
+		RepoSlug:   flags.repoSlug,
+		Logger:     logger,
+	}
+
+	start := time.Now()
+	results, err := runner.Run(context.Background(), opts)
+	if err != nil {
+		return err
+	}
+
+	sum := output.RunSummary{StartedAt: start, FinishedAt: time.Now()}
+	for _, r := range results {
+		sum.Results = append(sum.Results, output.RepoResult{
+			Repo: r.Repo, Task: r.Task, Status: r.Status, Detail: r.Detail,
+		})
+	}
+	if flags.outputDir != "" {
+		if err := output.WriteSummary(flags.outputDir, sum); err != nil {
+			logger.Warn("write summary failed", "error", err)
+		}
+	}
+
+	fmt.Println("\n── Run Summary ──────────────────────────────────")
+	for _, r := range results {
+		fmt.Printf("  %-40s  %-20s  %-12s  %s\n", r.Repo, r.Task, r.Status, r.Detail)
+	}
+	return nil
+}
+
 func tasksCmd() *cobra.Command {
 	cmd := &cobra.Command{Use: "tasks", Short: "Manage task configurations"}
 
@@ -139,23 +173,7 @@ func tasksCmd() *cobra.Command {
 		Use:   "list",
 		Short: "List all configured tasks",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			entries, err := os.ReadDir(tasksDir)
-			if err != nil {
-				return err
-			}
-			for _, e := range entries {
-				if e.IsDir() || !strings.HasSuffix(e.Name(), ".yaml") {
-					continue
-				}
-				tc, err := config.LoadTask(filepath.Join(tasksDir, e.Name()))
-				if err != nil {
-					fmt.Printf("  %-30s  ERROR: %v\n", e.Name(), err)
-					continue
-				}
-				fmt.Printf("  %-20s  %-40s  output=%-10s  model=%s\n",
-					tc.Name, tc.Description, tc.Output.Type, tc.Model)
-			}
-			return nil
+			return listTasks(tasksDir)
 		},
 	}
 
@@ -163,26 +181,7 @@ func tasksCmd() *cobra.Command {
 		Use:   "validate",
 		Short: "Validate all task configs",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			entries, err := os.ReadDir(tasksDir)
-			if err != nil {
-				return err
-			}
-			ok := true
-			for _, e := range entries {
-				if e.IsDir() || !strings.HasSuffix(e.Name(), ".yaml") {
-					continue
-				}
-				if _, err := config.LoadTask(filepath.Join(tasksDir, e.Name())); err != nil {
-					fmt.Fprintf(os.Stderr, "FAIL %s: %v\n", e.Name(), err)
-					ok = false
-				} else {
-					fmt.Printf("OK   %s\n", e.Name())
-				}
-			}
-			if !ok {
-				return fmt.Errorf("validation failed")
-			}
-			return nil
+			return validateTasks(tasksDir)
 		},
 	}
 
@@ -191,6 +190,49 @@ func tasksCmd() *cobra.Command {
 		cmd.AddCommand(sub)
 	}
 	return cmd
+}
+
+func listTasks(tasksDir string) error {
+	entries, err := os.ReadDir(tasksDir)
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".yaml") {
+			continue
+		}
+		tc, err := config.LoadTask(filepath.Join(tasksDir, e.Name()))
+		if err != nil {
+			fmt.Printf("  %-30s  ERROR: %v\n", e.Name(), err)
+			continue
+		}
+		fmt.Printf("  %-20s  %-40s  output=%-10s  model=%s\n",
+			tc.Name, tc.Description, tc.Output.Type, tc.Model)
+	}
+	return nil
+}
+
+func validateTasks(tasksDir string) error {
+	entries, err := os.ReadDir(tasksDir)
+	if err != nil {
+		return err
+	}
+	ok := true
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".yaml") {
+			continue
+		}
+		if _, err := config.LoadTask(filepath.Join(tasksDir, e.Name())); err != nil {
+			fmt.Fprintf(os.Stderr, "FAIL %s: %v\n", e.Name(), err)
+			ok = false
+		} else {
+			fmt.Printf("OK   %s\n", e.Name())
+		}
+	}
+	if !ok {
+		return fmt.Errorf("validation failed")
+	}
+	return nil
 }
 
 func firstNonEmpty(vals ...string) string {
