@@ -57,12 +57,12 @@ jobs:
           INPUT_DRY_RUN:  ${{ inputs.dry_run }}
         run: |
           set -euo pipefail
-          ARGS="--output-dir output/"
-          [ -n "$INPUT_TASK" ]          && ARGS="$ARGS --task $INPUT_TASK"
-          [ -n "$INPUT_REPO" ]          && ARGS="$ARGS --repo $INPUT_REPO"
-          [ -n "$INPUT_MODEL" ]         && ARGS="$ARGS --model $INPUT_MODEL"
-          [ "$INPUT_DRY_RUN" = "true" ] && ARGS="$ARGS --dry-run"
-          ./bin/standardizer run $ARGS
+          args=("--output-dir" "output/")
+          [ -n "$INPUT_TASK" ]          && args+=("--task"    "$INPUT_TASK")
+          [ -n "$INPUT_REPO" ]          && args+=("--repo"    "$INPUT_REPO")
+          [ -n "$INPUT_MODEL" ]         && args+=("--model"   "$INPUT_MODEL")
+          [ "$INPUT_DRY_RUN" = "true" ] && args+=("--dry-run")
+          ./bin/standardizer run "${args[@]}"
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()

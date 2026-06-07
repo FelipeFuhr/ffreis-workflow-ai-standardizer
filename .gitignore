@@ -6,3 +6,6 @@ output/
 
 scripts/hooks/
 scripts/bootstrap_lefthook.sh
+
+# SonarQube scanner artifacts
+.scannerwork/
