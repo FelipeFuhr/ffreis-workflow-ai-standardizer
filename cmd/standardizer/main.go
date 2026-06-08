@@ -161,6 +161,18 @@ func runCmdRunE(_ *cobra.Command, flags runCmdFlags) error {
 	for _, r := range results {
 		fmt.Printf("  %-40s  %-20s  %-12s  %s\n", r.Repo, r.Task, r.Status, r.Detail)
 	}
+
+	writeStepSummary(results)
+
+	var errCount int
+	for _, r := range results {
+		if r.Status == "error" {
+			errCount++
+		}
+	}
+	if errCount > 0 && !flags.dryRun {
+		return fmt.Errorf("%d task(s) failed — see summary above", errCount)
+	}
 	return nil
 }
 
@@ -242,4 +254,36 @@ func firstNonEmpty(vals ...string) string {
 		}
 	}
 	return ""
+}
+
+// writeStepSummary writes a markdown results table to $GITHUB_STEP_SUMMARY when running
+// inside GitHub Actions, so findings are visible in the workflow quality view without
+// downloading the artifact.
+func writeStepSummary(results []runner.Result) {
+	path := os.Getenv("GITHUB_STEP_SUMMARY")
+	if path == "" {
+		return
+	}
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+
+	counts := map[string]int{}
+	for _, r := range results {
+		counts[r.Status]++
+	}
+
+	var sb strings.Builder
+	sb.WriteString("## Standardizer Run\n\n")
+	sb.WriteString("| Repo | Task | Status | Detail |\n")
+	sb.WriteString("|------|------|--------|--------|\n")
+	for _, r := range results {
+		sb.WriteString(fmt.Sprintf("| %s | %s | %s | %s |\n", r.Repo, r.Task, r.Status, r.Detail))
+	}
+	sb.WriteString(fmt.Sprintf("\n**%d pr_opened / %d no_changes / %d skipped / %d errors**\n",
+		counts["pr_opened"], counts["no_changes"], counts["skipped"], counts["error"]))
+
+	fmt.Fprint(f, sb.String())
 }
