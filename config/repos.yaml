@@ -3,7 +3,7 @@
 # model_override is optional — defaults to the task's model.
 
 repos:
-  - repo: FelipeFuhr/ffreis-website-inventory
+  - repo: ffreis-org/ffreis-website-inventory
     branch: ffreis/00-setup
     tasks: [detect-drift]
 
