@@ -40,6 +40,20 @@ or locally inside a repo's own CI pipeline.
 - **`--dry-run` prints the rendered prompt and skips LLM calls, git writes, and PR
   creation.** Use it to validate context gathering and prompt rendering without cost.
 
+- **`.gitignore`'s `output/` pattern must stay anchored (`/output/`).** An
+  earlier unanchored `output/` line also matched `internal/output/` (the Go
+  package `cmd/standardizer/main.go` imports), so that package's source files
+  were never committed — every fresh checkout, including CI, failed to build
+  with "no required module provides package .../internal/output" until this
+  was caught and fixed. If you ever add a directory literally named `output`
+  anywhere in the tree, double-check the pattern doesn't shadow it again.
+
+- **`internal/output.runGit` and `internal/runner.cloneRepo` are package-level
+  vars, not plain funcs**, specifically so tests can substitute a fake and
+  exercise git/clone error paths without spawning real processes or touching
+  the network. Keep this pattern for any future external-process call site
+  you want to unit test.
+
 ## Structure
 
 ```
@@ -71,6 +85,22 @@ make build
 # Full central run
 LLM_API_KEY=sk-... GH_TOKEN=ghp_... ./bin/standardizer run
 ```
+
+## Testing
+
+```bash
+make test              # go test -race -shuffle=on ./...
+make coverage-gate     # go test ./... + fail if total coverage < 75% (COVERAGE_MIN)
+make quality-gates     # test + coverage-gate + security (govulncheck) — pre-push tier
+```
+
+`coverage-gate`/`integration-coverage-gate` shell scripts are vendored
+directly in `scripts/hooks/` (not fetched from `ffreis-platform-standards`
+like the other hook scripts) because they didn't exist upstream yet as of the
+pinned `PLATFORM_STANDARDS_SHA`. If a future bump of that pin adds them
+upstream, switch these two names from vendored files to `HOOK_SCRIPTS`
+fetch-list entries instead of carrying both a vendored copy and a fetched
+copy.
 
 ## Adding a new task
 
