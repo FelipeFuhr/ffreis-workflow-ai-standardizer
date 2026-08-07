@@ -1,5 +1,5 @@
 bin/
-output/
+/output/
 *.log
 .env
 *.local.yaml
