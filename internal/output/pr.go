@@ -77,7 +77,10 @@ func (h *PRHandler) CreatePR(
 	return pr.GetHTMLURL(), nil
 }
 
-func runGit(dir string, args ...string) (string, error) {
+// runGit is a package-level var (not a plain func) so tests can substitute a
+// fake and exercise CreatePR's branch/commit/push error paths without
+// spawning real git processes or touching the network.
+var runGit = func(dir string, args ...string) (string, error) {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
 	out, err := cmd.CombinedOutput()
